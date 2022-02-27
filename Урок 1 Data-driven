@@ -1,0 +1,359 @@
+Автор материала: Зраев Артем.
+
+Можно использовать в каких угодно целях.
+
+<b> В задании нужно загрузить датасет с данными оттока и ответить на несколько вопросов (написать код). При этом сам датасет уже есть и его необязательно качать с репозитория</b>
+
+Цель задания: проверить базовые навыки работы студентов с Pandas, умение проводить такой же базовый EDA (exploratory data analysis), делать feature engineering и обучать и валидировать модель.
+
+Список столбцов с типами данных в датасете:
+
+- customerID           object
+- gender               object
+- SeniorCitizen         int64
+- Partner              object
+- Dependents           object
+- tenure                int64
+- PhoneService         object
+- MultipleLines        object
+- InternetService      object
+- OnlineSecurity       object
+- OnlineBackup         object
+- DeviceProtection     object
+- TechSupport          object
+- StreamingTV          object
+- StreamingMovies      object
+- Contract             object
+- PaperlessBilling     object
+- PaymentMethod        object
+- MonthlyCharges      float64
+- TotalCharges         object
+- Churn                object
+
+import pandas as pd
+import numpy as np
+
+df = pd.read_csv("./WA_Fn-UseC_-Telco-Customer-Churn.csv")
+df.head(3)
+
+##### 1. Какое соотношение мужчин и женщин в представленном наборе данных?
+
+df['gender'].value_counts('Male')
+
+# /*
+# Male      0.504756
+# Female    0.495244
+# */
+
+##### 2. Какое количество уникальных значений у поля InternetService?
+
+n = len(pd.unique(df['InternetService'])) 
+
+print(n)
+
+df['InternetService'].describe()
+
+# Проверка
+
+##### 3. Выведите статистики по полю TotalCharges (median, mean, std).
+
+df['TotalCharges'].describe()
+
+# dtype: object
+# Некорректная работа describe
+
+#Видим, что TotalCharges имеет тип objects, поэтому describe работает некорректно
+#Нужно заполнить ПУСТО, затем поменять тип данных
+
+def func(x):
+    try:
+        x = float (x)
+    except:
+        x = 0
+    return x
+
+df['TotalCharges'] = df['TotalCharges'].apply(func)
+
+df['TotalCharges'].astype(float)
+
+В чем странность того, что вы получили? (подсказка: смотреть нужно на тип данных)
+
+df['TotalCharges'].describe()
+
+
+# mean     2279.734304
+# std      2266.794470
+# min         0.000000
+
+##### 4. Сделайте замену значений поля PhoneService  на числовые (Yes->1, No->0)
+
+df['PhoneService'] = df['PhoneService'].replace('Yes', 1, regex=True)
+df['PhoneService'] = df['PhoneService'].replace('No', 1, regex=True)
+df
+
+##### 5. Сделайте замену пробелов в поле TotalCharges на np.nan и приведите поле к типу данных float32. Затем заполните оставшиеся пропуски значением 0 с помощью метода fillna у столбца. Снова выведите статистики и сравните с тем, что вы видели в вопросе 3
+
+df['TotalCharges'] = df['TotalCharges'].replace(r'^\s*$', np.nan, regex=True)
+df['TotalCharges'].astype(float)
+df['TotalCharges'] = df['TotalCharges'].replace(np.nan, 0, regex=True)
+
+df.describe()
+
+
+# Через fillna df.fillna(value=0, inplace=True)
+
+##### 6. Сделайте замену значений поля Churn на числовые (Yes -> 1, No - 0)
+
+df['Churn']
+
+df['Churn'] = df['Churn'].replace('Yes', 1, regex=True)
+df['Churn'] = df['Churn'].replace('No', 0, regex=True)
+df
+
+##### 7. Сделайте замену значений полей StreamingMovies, StreamingTV, TechSupport  на числовые (Yes -> 1, No -> 0, No internet service->0)
+
+df.dtypes
+
+#StreamingTV          object
+#StreamingMovies      object
+#TechSupport          object
+
+
+df['StreamingTV']
+
+df['StreamingTV'] = df['StreamingTV'].replace('Yes', 1, regex=True)
+df['StreamingTV'] = df['StreamingTV'].replace('No', 0, regex=True)
+
+df['StreamingMovies'] = df['StreamingMovies'].replace('Yes', 1, regex=True)
+df['StreamingMovies'] = df['StreamingMovies'].replace('No', 0, regex=True)
+
+df['TechSupport'] = df['TechSupport'].replace('Yes', 1, regex=True)
+df['TechSupport'] = df['TechSupport'].replace('No', 0, regex=True)
+
+df['PhoneService']
+df['PhoneService'] = df['PhoneService'].replace(r'^\s*$', np.nan, regex=True)
+df['PhoneService'] = df['PhoneService'].replace(np.nan, 0, regex=True)
+
+df['PhoneService']
+
+#### 8. Для нашего датасета оставьте только указанный ниже список полей, удалив все другие и выведите верхние 3 строки
+
+columns = ['gender', 'tenure', 'PhoneService', 'TotalCharges', 
+           'StreamingMovies', 'StreamingTV', 'TechSupport', 'Churn']
+#Ваш код здесь
+
+
+
+df = df.drop(['customerID','Partner', 'SeniorCitizen'], axis = 1)
+
+
+df = df.drop(['Dependents','MultipleLines','InternetService','OnlineSecurity','OnlineBackup','DeviceProtection','Contract','PaperlessBilling','PaymentMethod','MonthlyCharges'], axis=1)
+
+df
+
+##### 9. Разделите датасет на тренировочную и тестовую выборку (подсказка - воспользуйтесь train_test_split из sklearn.model_selection. Ссылка - https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html)
+
+import pandas as pd
+import numpy as np
+from sklearn.pipeline import Pipeline, make_pipeline
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
+
+import matplotlib.pyplot as plt
+
+%matplotlib inline
+
+from sklearn.model_selection import train_test_split
+
+features = ['gender', 'tenure', 'PhoneService', 'TotalCharges', 'StreamingMovies', 'StreamingTV', 'TechSupport']
+target = 'Churn'
+#Ваш код здесь
+
+
+from sklearn.model_selection import train_test_split
+
+X = ['gender', 'tenure', 'PhoneService', 'TotalCharges', 'StreamingMovies', 'StreamingTV', 'TechSupport']
+y = 'Churn'
+#Ваш код здесь
+
+
+#разделим данные на train/test
+X_train, X_test, y_train, y_test = train_test_split(df, df['Churn'], random_state=0)
+
+
+X_train.head(3)
+
+##### 10. соберите pipeline для поля gender (нужно разобраться и изучить https://scikit-learn.org/stable/modules/generated/sklearn.pipeline.Pipeline.html ) из классов ColumnSelector и OHEEncoder, которые уже написаны ниже заранее
+
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.pipeline import Pipeline
+
+class ColumnSelector(BaseEstimator, TransformerMixin):
+    """
+    Transformer to select a single column from the data frame to perform additional transformations on
+    """
+    def __init__(self, key):
+        self.key = key
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X):
+        return X[self.key]
+    
+class NumberSelector(BaseEstimator, TransformerMixin):
+    """
+    Transformer to select a single column from the data frame to perform additional transformations on
+    Use on numeric columns in the data
+    """
+    def __init__(self, key):
+        self.key = key
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X):
+        return X[[self.key]]
+    
+class OHEEncoder(BaseEstimator, TransformerMixin):
+    def __init__(self, key):
+        self.key = key
+        self.columns = []
+
+    def fit(self, X, y=None):
+        self.columns = [col for col in pd.get_dummies(X, prefix=self.key).columns]
+        return self
+
+    def transform(self, X):
+        X = pd.get_dummies(X, prefix=self.key)
+        test_columns = [col for col in X.columns]
+        for col_ in test_columns:
+            if col_ not in self.columns:
+                X[col_] = 0
+        return X[self.columns]
+
+gender = Pipeline([
+                ('ColumnSelector', ColumnSelector(key='gender')),
+                ('OHEEncoder', OHEEncoder(key='gender'))
+            ])
+
+##### 11. Вызовите метод fit_transform у пайплайна gender и передайте туда нашу тренировочную выборку (пример по ссылке из документации https://scikit-learn.org/stable/modules/generated/sklearn.pipeline.Pipeline.html#sklearn.pipeline.Pipeline.fit)
+
+#Ваш код здесь
+
+
+gender.fit(X_train, y_train)
+
+
+
+gender.fit_transform(X_train, y_train)
+
+##### 12. Здесь код писать уже не нужно (все сделано за вас). К полю tenure применяем StandardScaler (нормируем и центрируем). Ссылка - https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.StandardScaler.html
+Вопрос - в каких случаях это может быть полезно?
+
+from sklearn.preprocessing import StandardScaler
+
+tenure =  Pipeline([
+                ('selector', NumberSelector(key='tenure')),
+                ('standard', StandardScaler())
+            ])
+
+print(tenure)
+
+# Роман, если я понял вопрос правильно, то у меня здесь недавно встречалась задачка по работе, 
+# где я загружал одним разом много данных и уменя при этом КВОТА на загрузку превышалась. 
+# Т.е. нумерация полезна для создания столбца(Списка), 
+# из которого в последствии ограничениями на ввод данных ">= 94" можно вытаскивать определённое кол-во этих данных.
+
+##### 13. Напишите аналогичный (как для tenure) преобразователь поля TotalCharges
+
+from sklearn.preprocessing import StandardScaler
+
+TotalCharges =  Pipeline([
+# Имя может быть любым 
+    ('selector', NumberSelector(key='TotalCharges')),
+                ('standard', StandardScaler())
+            ])
+
+Объединение всех "кубиков" очень легко сделать таким образом
+
+from sklearn.pipeline import FeatureUnion
+
+number_features = Pipeline([
+                ('selector', ColumnSelector(key=['PhoneService',
+                                                 'StreamingMovies', 'StreamingTV', 
+                                                 'TechSupport']))
+            ])
+
+feats = FeatureUnion([('tenure', tenure),
+                      ('TotalCharges', TotalCharges),
+                      ('continuos_features', number_features),
+                      ('gender', gender)])
+feature_processing = Pipeline([('feats', feats)])
+
+На этом этапе что мы сделали:
+1. написали преобразователь поля gender, который делает OHE кодирование
+2. написали преобразователь для поля tenure, который нормирует и центрирует его 
+3. повторили п. 2 для поля TotalCharges
+3. для всех остальных просто взяли признаки как они есть, без изменений
+
+У нас уже готов наш пайплайн, который преобразовывает признаки. Давайте обучим модель поверх него. В качестве модели возьмем RandomForestClassifier
+
+from sklearn.ensemble import RandomForestClassifier
+
+pipeline = Pipeline([
+    ('features',feats),
+    ('classifier', RandomForestClassifier(random_state = 42)),
+])
+
+pipeline.fit(X_train, y_train)
+
+##### 14. Сделайте прогноз вероятности оттока для X_test с помощью нашего предобученного на предыдущем шаге пайплайна и убедитесь что вам возвращаются вероятности для 2 классов
+
+#Ваш код здесь
+preds = pipeline.predict_proba(X_test)[:, 1]
+preds[:10]
+
+##### 15. Посчитайте метрики качества получившейся модели (roc_auc, logloss)
+
+from sklearn.metrics import roc_auc_score, log_loss
+
+
+
+roc_auc = roc_auc_score(y_test, preds)
+
+log_loss = log_loss(y_test, preds)
+
+fscore = (2 * roc_auc*log_loss) / (roc_auc + log_loss)
+# locate the index of the largest f score
+ix = np.argmax(fscore)
+
+
+ix = np.argmax(fscore)
+
+ix
+
+fscore
+
+roc_auc
+
+log_loss
+
+np.around([fscore, roc_auc, log_loss], decimals = 3)
+
+print(f'Best roc_auc_score=%.3f, log_loss=%.3f, fscore=%.3f')
+
+(fscore[ix])
+
+### Сохраним наш пайплайн
+
+# logloss = 0.8116902751816012
+
+# roc_auc = 0.775090935714357
+
+import dill
+with open("model_RF.dill", "wb") as f:
+    dill.dump(pipeline, f)
+
